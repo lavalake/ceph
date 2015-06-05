@@ -309,6 +309,7 @@ int HashIndex::_lookup(const ghobject_t &oid,
   get_path_components(oid, &path_comp);
   vector<string>::iterator next = path_comp.begin();
   int exists;
+  generic_derr << __func__ << " " << oid << " on index " << this << dendl;
   while (1) {
     int r = path_exists(*path, &exists);
     if (r < 0) {
@@ -640,7 +641,7 @@ int HashIndex::complete_split(const vector<string> &path, subdir_info_s info) {
   map<string, ghobject_t> objects;
   vector<string> dst = path;
   int r;
-  generic_derr << __func__ << " " << coll() << " path " << path << dendl;
+  generic_derr << __func__ << " " << coll() << " path " << path << " index " << this << dendl;
   dst.push_back("");
   r = list_objects(path, 0, 0, &objects);
   if (r < 0)
