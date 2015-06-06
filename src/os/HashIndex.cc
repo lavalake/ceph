@@ -270,7 +270,9 @@ int HashIndex::_created(const vector<string> &path,
     int r = initiate_split(path, info);
     if (r < 0)
       return r;
-    return complete_split(path, info);
+    r = complete_split(path, info);
+    assert(r >= 0);
+    return r;
   } else {
     return 0;
   }
@@ -667,12 +669,14 @@ int HashIndex::complete_split(const vector<string> &path, subdir_info_s info) {
   for (map<string, map<string, ghobject_t> >::iterator i = mapped.begin();
        i != mapped.end();
        ) {
+    generic_derr << " PREFIX " << i->first << dendl;
     dst[level] = i->first;
     /* If the info already exists, it must be correct,
      * we may be picking up a partially finished split */
     subdir_info_s temp;
     // subdir has already been fully copied
     if (subdirs.count(i->first) && !get_info(dst, &temp)) {
+      generic_derr << " subdir already fully copied" << dendl;
       for (map<string, ghobject_t>::iterator j = i->second.begin();
 	   j != i->second.end();
 	   ++j) {
@@ -689,6 +693,7 @@ int HashIndex::complete_split(const vector<string> &path, subdir_info_s info) {
     info_new.subdirs = 0;
     info_new.hash_level = level + 1;
     if (must_merge(info_new) && !subdirs.count(i->first)) {
+      generic_derr << " must_merge and no subdir" << dendl;
       mapped.erase(i++);
       continue;
     }
@@ -696,10 +701,12 @@ int HashIndex::complete_split(const vector<string> &path, subdir_info_s info) {
     // Subdir doesn't yet exist
     if (!subdirs.count(i->first)) {
       info.subdirs += 1;
-      generic_derr << " craate_path " << dst << dendl;
+      generic_derr << " create_path " << dst << dendl;
       r = create_path(dst);
-      if (r < 0)
+      if (r < 0) {
+	generic_derr << " create_path fails with " << r << dendl;
 	return r;
+      }
     } // else subdir has been created but only partially copied
 
     for (map<string, ghobject_t>::iterator j = i->second.begin();
