@@ -1542,6 +1542,7 @@ int FileStore::mount()
       derr << "Error " << ret << " while listing collections" << dendl;
       goto close_current_fd;
     }
+    derr << "collections " << collections << dendl;
     for (vector<coll_t>::iterator i = collections.begin();
 	 i != collections.end();
 	 ++i) {
