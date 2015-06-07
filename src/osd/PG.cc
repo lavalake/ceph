@@ -1328,7 +1328,6 @@ bool PG::choose_acting(pg_shard_t &auth_log_shard_id)
   // We go incomplete if below min_size for ec_pools since backfill
   // does not currently maintain rollbackability
   // Otherwise, we will go "peered", but not "active"
-  // XXX: Use get_min_peer_features()?
   if (num_want_acting < pool.info.min_size &&
       (pool.info.ec_pool() ||
        (!(get_min_peer_features() & CEPH_FEATURE_OSD_MIN_SIZE_RECOVERY)) ||
