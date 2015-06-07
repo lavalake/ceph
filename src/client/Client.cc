@@ -3900,6 +3900,8 @@ void Client::early_kick_flushing_caps(MetaSession *session)
 {
   flush_tids_to_kick.clear();
 
+  set<ceph_tid_t> flush_tids;
+
   for (xlist<Inode*>::iterator p = session->flushing_caps.begin(); !p.end(); ++p) {
     Inode *in = *p;
     if (!in->flushing_caps)
@@ -3916,10 +3918,14 @@ void Client::early_kick_flushing_caps(MetaSession *session)
     for (int i = 0; i < CEPH_CAP_BITS; ++i) {
       if (!(in->flushing_caps & (1 << i)))
 	continue;
+      ceph_tid_t tid = in->flushing_cap_tid[i];
+      assert(tid > 0);
+      flush_tids.insert(tid);
+
       if (send_now)
-	flushes[in->flushing_cap_tid[i]] |= 1 << i;
+	flushes[tid] |= 1 << i;
       else
-	flush_tids_to_kick.insert(in->flushing_cap_tid[i]);
+	flush_tids_to_kick.insert(tid);
     }
 
     if (!send_now)
@@ -3933,6 +3939,9 @@ void Client::early_kick_flushing_caps(MetaSession *session)
 	       p->second, p->first);
     }
   }
+
+  // remove stale flushing TIDs
+  session->flushing_caps_tids.swap(flush_tids);
 }
 
 void Client::kick_maxsize_requests(MetaSession *session)
