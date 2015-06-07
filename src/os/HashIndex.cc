@@ -143,10 +143,10 @@ int HashIndex::col_split_level(
        i != objects.end();
        ++i) {
     if (i->second.match(inbits, match)) {
-      generic_dout(10) << __func__ << " moving " << i->second << dendl;
+      generic_derr << __func__ << " moving " << i->second << dendl;
       objs_to_move.insert(*i);
     } else {
-      generic_dout(10) << __func__ << " NOT moving " << i->second << dendl;
+      generic_derr << __func__ << " NOT moving " << i->second << dendl;
     }
   }
 
@@ -234,7 +234,7 @@ int HashIndex::_split(
   CollectionIndex* dest) {
   assert(collection_version() == dest->collection_version());
   unsigned mkdirred = 0;
-  generic_dout(10) << __func__ << " " << coll() << " start" << dendl;
+  generic_derr << __func__ << " " << coll() << " start" << dendl;
   int r = col_split_level(
     *this,
     *static_cast<HashIndex*>(dest),
@@ -242,7 +242,7 @@ int HashIndex::_split(
     bits,
     match,
     &mkdirred);
-  generic_dout(10) << __func__ << " " << coll() << " end = " << r << dendl;
+  generic_derr << __func__ << " " << coll() << " end = " << r << dendl;
   return r;
 }
 
@@ -311,16 +311,16 @@ int HashIndex::_lookup(const ghobject_t &oid,
   get_path_components(oid, &path_comp);
   vector<string>::iterator next = path_comp.begin();
   int exists;
-  generic_dout(10) << __func__ << " " << oid << " on index " << this << dendl;
+  generic_derr << __func__ << " " << oid << " on index " << this << dendl;
   while (1) {
     int r = path_exists(*path, &exists);
     if (r < 0) {
-      generic_dout(10) << __func__ << " " << oid << " path_exists = " << r << dendl;
+      generic_derr << __func__ << " " << oid << " path_exists = " << r << dendl;
       return r;
     }
     if (!exists) {
       if (path->empty()) {
-	generic_dout(10) << __func__ << " " << oid << " path empty" << dendl;
+	generic_derr << __func__ << " " << oid << " path empty" << dendl;
 	return -ENOENT;
       }
       path->pop_back();
@@ -643,7 +643,7 @@ int HashIndex::complete_split(const vector<string> &path, subdir_info_s info) {
   map<string, ghobject_t> objects;
   vector<string> dst = path;
   int r;
-  generic_dout(10) << __func__ << " " << coll() << " path " << path << " index " << this << dendl;
+  generic_derr << __func__ << " " << coll() << " path " << path << " index " << this << dendl;
   dst.push_back("");
   r = list_objects(path, 0, 0, &objects);
   if (r < 0)
@@ -652,8 +652,8 @@ int HashIndex::complete_split(const vector<string> &path, subdir_info_s info) {
   r = list_subdirs(path, &subdirs);
   if (r < 0)
     return r;
-  generic_dout(10) << " objects " << objects << dendl;
-  generic_dout(10) << " subdirs " << subdirs << dendl;
+  generic_derr << " objects " << objects << dendl;
+  generic_derr << " subdirs " << subdirs << dendl;
   map<string, map<string, ghobject_t> > mapped;
   map<string, ghobject_t> moved;
   int num_moved = 0;
@@ -662,21 +662,21 @@ int HashIndex::complete_split(const vector<string> &path, subdir_info_s info) {
        ++i) {
     vector<string> new_path;
     get_path_components(i->second, &new_path);
-    generic_dout(10) << " map " << i->second << " to " << new_path
+    generic_derr << " map " << i->second << " to " << new_path
 		 << " f " << i->first << dendl;
     mapped[new_path[level]][i->first] = i->second;
   }
   for (map<string, map<string, ghobject_t> >::iterator i = mapped.begin();
        i != mapped.end();
        ) {
-    generic_dout(10) << " PREFIX " << i->first << dendl;
+    generic_derr << " PREFIX " << i->first << dendl;
     dst[level] = i->first;
     /* If the info already exists, it must be correct,
      * we may be picking up a partially finished split */
     subdir_info_s temp;
     // subdir has already been fully copied
     if (subdirs.count(i->first) && !get_info(dst, &temp)) {
-      generic_dout(10) << " subdir already fully copied" << dendl;
+      generic_derr << " subdir already fully copied" << dendl;
       for (map<string, ghobject_t>::iterator j = i->second.begin();
 	   j != i->second.end();
 	   ++j) {
@@ -693,7 +693,7 @@ int HashIndex::complete_split(const vector<string> &path, subdir_info_s info) {
     info_new.subdirs = 0;
     info_new.hash_level = level + 1;
     if (must_merge(info_new) && !subdirs.count(i->first)) {
-      generic_dout(10) << " must_merge and no subdir" << dendl;
+      generic_derr << " must_merge and no subdir" << dendl;
       mapped.erase(i++);
       continue;
     }
@@ -701,10 +701,10 @@ int HashIndex::complete_split(const vector<string> &path, subdir_info_s info) {
     // Subdir doesn't yet exist
     if (!subdirs.count(i->first)) {
       info.subdirs += 1;
-      generic_dout(10) << " create_path " << dst << dendl;
+      generic_derr << " create_path " << dst << dendl;
       r = create_path(dst);
       if (r < 0) {
-	generic_dout(10) << " create_path fails with " << r << dendl;
+	generic_derr << " create_path fails with " << r << dendl;
 	return r;
       }
     } // else subdir has been created but only partially copied
@@ -715,7 +715,7 @@ int HashIndex::complete_split(const vector<string> &path, subdir_info_s info) {
       moved[j->first] = j->second;
       num_moved++;
       objects.erase(j->first);
-      generic_dout(10) << " link_object " << path << " dst " << dst
+      generic_derr << " link_object " << path << " dst " << dst
 		   << " ob " << j->second << " .. " << j->first << dendl;
       r = link_object(path, dst, j->second, j->first);
       // May be a partially finished split
@@ -810,7 +810,7 @@ int HashIndex::get_path_contents_by_hash(const vector<string> &path,
   r = list_objects(path, 0, 0, &rev_objects);
   if (r < 0)
     return r;
-  generic_dout(10) << __func__ << " rev_objects " << rev_objects << dendl;
+  generic_derr << __func__ << " rev_objects " << rev_objects << dendl;
   for (map<string, ghobject_t>::iterator i = rev_objects.begin();
        i != rev_objects.end();
        ++i) {
@@ -839,7 +839,7 @@ int HashIndex::get_path_contents_by_hash(const vector<string> &path,
       continue;
     hash_prefixes->insert(cur_prefix + *i);
   }
-  generic_dout(10) << __func__ << " result " << *objects << dendl;
+  generic_derr << __func__ << " result " << *objects << dendl;
   return 0;
 }
 
